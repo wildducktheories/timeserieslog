@@ -71,14 +71,19 @@ func (d *disjointRanges) Partition(e Element, o Order) (SortedRange, SortedRange
 				if p1.Last() == nil {
 					panic("p1.Last() is nil!")
 				}
-				r1, r2 = &disjointRanges{
+				r1 = &disjointRanges{
 					first:    d.first,
 					last:     p1.Last(),
 					segments: append(d.segments[0:i], p1),
-				}, &disjointRanges{
-					first:    d.segments[i+1].First(),
-					last:     d.last,
-					segments: d.segments[i+1:],
+				}
+				if i+1 < len(d.segments) {
+					r2 = &disjointRanges{
+						first:    d.segments[i+1].First(),
+						last:     d.last,
+						segments: d.segments[i+1:],
+					}
+				} else {
+					r2 = EmptyRange
 				}
 			} else {
 				if p1.Last() == nil {
