@@ -50,6 +50,18 @@ func (d *disjointRanges) Partition(e Element, o Order) (SortedRange, SortedRange
 		if r.Last() == nil {
 			panic("r.Last() is nil!")
 		}
+		if o(e, r.First()) && !o(r.First(), e) {
+			r1, r2 := &disjointRanges{
+				first:    d.first,
+				last:     d.segments[i-1].Last(),
+				segments: d.segments[0:i],
+			}, &disjointRanges{
+				first:    r.First(),
+				last:     d.last,
+				segments: d.segments[i:],
+			}
+			return r1, r2
+		}
 		if o(r.First(), e) && o(e, r.Last()) {
 			p1, p2 := r.Partition(e, o)
 			var r1, r2 SortedRange
