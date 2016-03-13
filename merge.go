@@ -180,6 +180,11 @@ func merge(a SortedRange, b SortedRange) SortedRange {
 		p3, p4 := b.Partition(a.Last(), LessOrEqualOrder)
 		m23 := useEmptyRangeIfEmpty(newMergeableRange(p2.First(), p3.Last(), p2, p3, nil))
 		if m23 == EmptyRange {
+			if p1.Limit() == 0 {
+				return p4
+			} else if p4.Limit() == 0 {
+				return p1
+			}
 			return &disjointRanges{
 				first: first,
 				last:  last,
@@ -189,6 +194,31 @@ func merge(a SortedRange, b SortedRange) SortedRange {
 				},
 			}
 		} else {
+			if p1.Limit() == 0 {
+				if p4.Limit() == 0 {
+					return m23
+				}
+				return &disjointRanges{
+					first: first,
+					last:  last,
+					segments: []SortedRange{
+						m23,
+						p4,
+					},
+				}
+			} else if p4.Limit() == 0 {
+				if p1.Limit() == 0 {
+					return m23
+				}
+				return &disjointRanges{
+					first: first,
+					last:  last,
+					segments: []SortedRange{
+						p1,
+						m23,
+					},
+				}
+			}
 			return &disjointRanges{
 				first: first,
 				last:  last,
