@@ -176,15 +176,9 @@ func merge(a SortedRange, b SortedRange) SortedRange {
 	} else if b.Limit() == 0 {
 		return a
 	} else if a.Last().Less(b.First()) {
-		var last Element
-		if !b.Last().Less(a.Last()) {
-			last = b.Last()
-		} else {
-			last = a.Last()
-		}
 		return &disjointRanges{
 			first:    a.First(),
-			last:     last,
+			last:     selectLast(a, b),
 			segments: []SortedRange{a, b},
 		}
 	} else {
@@ -203,54 +197,29 @@ func merge(a SortedRange, b SortedRange) SortedRange {
 		} else {
 			m23 = useEmptyRangeIfEmpty(newMergeableRange(selectFirst(p2, p3), selectLast(p2, p3), p2, p3, nil))
 		}
-		if m23 == EmptyRange {
-			if p1.Limit() == 0 {
-				return p4
-			} else if p4.Limit() == 0 {
-				return p1
-			}
-			return &disjointRanges{
-				first: first,
-				last:  last,
-				segments: []SortedRange{
-					p1,
-					p4,
-				},
-			}
-		} else {
-			if p1.Limit() == 0 && p4.Limit() == 0 {
-				return m23
-			}
-			if p1.Limit() == 0 {
-				return &disjointRanges{
-					first: first,
-					last:  last,
-					segments: []SortedRange{
-						m23,
-						p4,
-					},
-				}
-			} else if p4.Limit() == 0 {
-				return &disjointRanges{
-					first: first,
-					last:  last,
-					segments: []SortedRange{
-						p1,
-						m23,
-					},
-				}
-			}
-			return &disjointRanges{
-				first: first,
-				last:  last,
-				segments: []SortedRange{
-					p1,
-					m23,
-					p4,
-				},
+
+		segments := []SortedRange{p1, m23, p4}
+		j := 0
+		for _, r := range segments {
+			if r.Limit() > 0 {
+				segments[j] = r
+				j++
 			}
 		}
+		segments = segments[0:j]
 
+		switch len(segments) {
+		case 0:
+			panic("unexpected")
+		case 1:
+			return segments[0]
+		default:
+			return &disjointRanges{
+				first:    first,
+				last:     last,
+				segments: segments,
+			}
+		}
 	}
 }
 
