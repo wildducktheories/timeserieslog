@@ -170,6 +170,27 @@ func selectLast(a, b Range) Element {
 	return a.Last()
 }
 
+// flatten merges the segments slices of adjacent disjointRanges into a larger
+// slice
+func flatten(segments []SortedRange) []SortedRange {
+	if len(segments) == 0 {
+		return segments
+	} else if _, ok := segments[0].(*disjointRanges); !ok {
+		return append([]SortedRange{segments[0]}, flatten(segments[1:])...)
+	} else {
+		tmp := []SortedRange{}
+		for i, r := range segments {
+			if d, ok := r.(*disjointRanges); ok {
+				tmp = append(tmp, d.segments...)
+			} else {
+				return append(tmp, flatten(segments[i:])...)
+			}
+		}
+		return tmp
+	}
+
+}
+
 func merge(a SortedRange, b SortedRange) SortedRange {
 	if a.Limit() == 0 {
 		return b
@@ -217,7 +238,7 @@ func merge(a SortedRange, b SortedRange) SortedRange {
 			return &disjointRanges{
 				first:    first,
 				last:     last,
-				segments: segments,
+				segments: flatten(segments),
 			}
 		}
 	}
