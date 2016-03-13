@@ -162,6 +162,28 @@ func (c *disjointCursor) Fill(buffer []Element) int {
 	return next
 }
 
+// selectFirst Choose r = a.First() or r = b.First() such that
+// !b.First().Less(r) && !a.First().Less(r).
+//
+// If both a.First() and b.First() satisfy these constraints, then choose b.First()
+func selectFirst(a, b Range) Element {
+	if a.First().Less(b.First()) {
+		return a.First()
+	}
+	return b.First()
+}
+
+// selectLast Choose r = a.Last() or r = b.Last() such that
+// !r.Last().Less(a.Last()) && !r.Last().Less(b.Last()).
+//
+// If both a.Last() and b.Last() satisfy those constraints, then choose b.Last()
+func selectLast(a, b Range) Element {
+	if !b.Last().Less(a.Last()) {
+		return b.Last()
+	}
+	return a.Last()
+}
+
 func merge(a SortedRange, b SortedRange) SortedRange {
 	if a.Limit() == 0 {
 		return b
@@ -195,7 +217,16 @@ func merge(a SortedRange, b SortedRange) SortedRange {
 
 		p1, p2 := a.Partition(b.First(), LessOrder)
 		p3, p4 := b.Partition(a.Last(), LessOrEqualOrder)
-		m23 := useEmptyRangeIfEmpty(newMergeableRange(p2.First(), p3.Last(), p2, p3, nil))
+
+		var m23 SortedRange
+
+		if p2.Limit() == 0 {
+			m23 = p3
+		} else if p3.Limit() == 0 {
+			m23 = p2
+		} else {
+			m23 = useEmptyRangeIfEmpty(newMergeableRange(selectFirst(p2, p3), selectLast(p2, p3), p2, p3, nil))
+		}
 		if m23 == EmptyRange {
 			if p1.Limit() == 0 {
 				return p4
