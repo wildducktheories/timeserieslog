@@ -65,21 +65,7 @@ func (d *disjointRanges) Partition(e Element, o Order) (SortedRange, SortedRange
 		if o(r.First(), e) && o(e, r.Last()) {
 			p1, p2 := r.Partition(e, o)
 			var r1, r2 SortedRange
-			if p1.Limit() == 0 {
-				if p2.First() == nil {
-					panic("p2.First() is nil!")
-				}
-				r1, r2 = &disjointRanges{
-					first:    d.first,
-					last:     d.segments[i-1].Last(),
-					segments: d.segments[0:i],
-				}, &disjointRanges{
-					first:    p2.First(),
-					last:     d.last,
-					segments: append([]SortedRange{p2}, d.segments[i+1:]...),
-				}
-				return EmptyRange, p2
-			} else if p2.Limit() == 0 {
+			if p2.Limit() == 0 {
 				if p1.Last() == nil {
 					panic("p1.Last() is nil!")
 				}
@@ -202,18 +188,8 @@ func merge(a SortedRange, b SortedRange) SortedRange {
 			segments: []SortedRange{a, b},
 		}
 	} else {
-		var first, last Element
-		if a.First().Less(b.First()) {
-			first = a.First()
-		} else {
-			first = b.First()
-		}
-
-		if !b.Last().Less(a.Last()) {
-			last = b.Last()
-		} else {
-			last = a.Last()
-		}
+		first := selectFirst(a, b)
+		last := selectLast(a, b)
 
 		p1, p2 := a.Partition(b.First(), LessOrder)
 		p3, p4 := b.Partition(a.Last(), LessOrEqualOrder)
@@ -242,10 +218,10 @@ func merge(a SortedRange, b SortedRange) SortedRange {
 				},
 			}
 		} else {
+			if p1.Limit() == 0 && p4.Limit() == 0 {
+				return m23
+			}
 			if p1.Limit() == 0 {
-				if p4.Limit() == 0 {
-					return m23
-				}
 				return &disjointRanges{
 					first: first,
 					last:  last,
@@ -255,9 +231,6 @@ func merge(a SortedRange, b SortedRange) SortedRange {
 					},
 				}
 			} else if p4.Limit() == 0 {
-				if p1.Limit() == 0 {
-					return m23
-				}
 				return &disjointRanges{
 					first: first,
 					last:  last,
