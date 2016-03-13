@@ -17,7 +17,7 @@ The basic idea is that data is buffered into a `tsl.UnsortedRange` until a confi
 records have been read (controlled by the `--window` option). That range is then frozen and the
 data is then partitioned into two sorted ranges - the records before a split record (`write`) and the records afterwards (`hold`). The records before the split record are merged with any records kept from a previous iteration (`keep`) and then immediately written to the output. The records after the split record are retained (`keep`) and the split record is updated to the current record. The process continues until all the records have been read.
 
-The process detects if the configured window is too small to successfully sort the data and will
+The process detects if the configured window is too small to successfully sort the data and
 will die with a non-zero exit status if this is the case.
 
 	package main
@@ -133,9 +133,10 @@ will die with a non-zero exit status if this is the case.
 		wg.Wait()
 	}
 
-examples/toy-tsl-sort/timestamp.txt.gz contains 4.2M records from a real webserver's access log. Each line consists of timestamp at which a request started. The data is written at the time each request ends. This
-is example of timeseries data that is almost, but not actually sorted. The following shows the
-sort performance of toy-tsl-sort compared to the standard OSX sort utility.
+examples/toy-tsl-sort/timestamp.txt.gz contains 4.2M records from a real webserver's access log. Each line consists of timestamp at which a request started. The data was written to the log at the time each request ended. This is example of timeseries data that is almost, but not actually sorted.
+
+The following shows the sort performance of toy-tsl-sort compared to the standard OSX sort utility. Note that
+toy-tsl-sort will fail if --window is too small - in this case 2000.
 
 	$ (cd examples/toy-tsl-sort; go build)
 	$ (cd examples/toy-tsl-sort/; gzip -dc timestamps.txt.gz | time ./toy-tsl-sort --window=4000 | wc)
