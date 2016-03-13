@@ -147,4 +147,9 @@ toy-tsl-sort will fail if --window is too small - in this case 2000.
 	       59.15 real        58.67 user         0.30 sys
 	 4284042 8568084 102817008
 
+	$ (cd examples/toy-tsl-sort/; gzip -dc timestamps.txt.gz | time ./toy-tsl-sort --window=2000 | wc)
+	window too small: 2016-03-06 22:25:53.499: 2016-03-06 22:32:47.465
+	        2.83 real         3.66 user         1.33 sys
+	 1689818 3379636 40555632
+
 
