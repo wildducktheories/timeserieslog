@@ -39,7 +39,7 @@ func (d *disjointRanges) Limit() int {
 }
 
 func (d *disjointRanges) Partition(e Element, o Order) (SortedRange, SortedRange) {
-	if !o(d.segments[0].First(), e) {
+	if !o(d.first, e) {
 		return EmptyRange, d
 	}
 
