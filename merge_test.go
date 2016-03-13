@@ -156,3 +156,99 @@ func Test_Merge_Pair_Pair_Partition(t *testing.T) {
 		t.Fatalf("partition p2 got: %v, expected :%v", AsSlice(got), expected)
 	}
 }
+
+func Test_Merge_Pair1_Pair3_Partition_0(t *testing.T) {
+	a := newImmutableRange(NewElements([]int{0, 1}))
+	b := newImmutableRange(NewElements([]int{4, 5}))
+	aa, bb := Merge(a, b).Partition(intElement{-1}, LessOrder)
+
+	got := Elements(AsSlice(aa))
+	expected := NewElements([]int{})
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("partition got: %v, expected :%v", got, expected)
+	}
+
+	got = Elements(AsSlice(bb))
+	expected = NewElements([]int{0, 1, 4, 5})
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("partition got: %v, expected :%v", got, expected)
+	}
+}
+
+func Test_Merge_Pair1_Pair3_Partition_2(t *testing.T) {
+	a := newImmutableRange(NewElements([]int{0, 1}))
+	b := newImmutableRange(NewElements([]int{4, 5}))
+	aa, bb := Merge(a, b).Partition(intElement{2}, LessOrder)
+
+	got := Elements(AsSlice(aa))
+	expected := NewElements([]int{0, 1})
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("partition got: %v, expected :%v", got, expected)
+	}
+
+	got = Elements(AsSlice(bb))
+	expected = NewElements([]int{4, 5})
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("partition got: %v, expected :%v", got, expected)
+	}
+}
+
+func Test_Merge_Pair1_Pair3_Partition_4(t *testing.T) {
+	a := newImmutableRange(NewElements([]int{0, 1}))
+	b := newImmutableRange(NewElements([]int{4, 5}))
+	aa, bb := Merge(a, b).Partition(intElement{4}, LessOrEqualOrder)
+
+	got := Elements(AsSlice(aa))
+	expected := NewElements([]int{0, 1, 4})
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("partition got: %v, expected :%v", got, expected)
+	}
+
+	got = Elements(AsSlice(bb))
+	expected = NewElements([]int{5})
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("partition got: %v, expected :%v", got, expected)
+	}
+}
+
+func Test_Merge_Pair1_Pair3_Partition_5(t *testing.T) {
+	a := newImmutableRange(NewElements([]int{0, 1}))
+	b := newImmutableRange(NewElements([]int{4, 5}))
+	aa, bb := Merge(a, b).Partition(intElement{5}, LessOrEqualOrder)
+
+	got := Elements(AsSlice(aa))
+	expected := NewElements([]int{0, 1, 4, 5})
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("partition got: %v, expected :%v", got, expected)
+	}
+
+	got = Elements(AsSlice(bb))
+	expected = NewElements([]int{})
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("partition got: %v, expected :%v", got, expected)
+	}
+}
+
+func Test_Merge_Pair1_Pair3_Pair2(t *testing.T) {
+	a := newImmutableRange(NewElements([]int{0, 1}))
+	b := newImmutableRange(NewElements([]int{4, 5}))
+	c := newImmutableRange(NewElements([]int{2, 3}))
+	got := Merge(Merge(a, b), c)
+
+	expected := NewElements([]int{0, 1, 2, 3, 4, 5})
+	if !reflect.DeepEqual(Elements(AsSlice(got)), expected) {
+		t.Fatalf("partition got: %v, expected :%v", AsSlice(got), expected)
+	}
+}
+
+func Test_Merge_Pair1_Pair2_Pair3(t *testing.T) {
+	a := newImmutableRange(NewElements([]int{0, 1}))
+	b := newImmutableRange(NewElements([]int{2, 3}))
+	c := newImmutableRange(NewElements([]int{4, 5}))
+	got := Merge(Merge(a, b), c)
+
+	expected := NewElements([]int{0, 1, 2, 3, 4, 5})
+	if !reflect.DeepEqual(Elements(AsSlice(got)), expected) {
+		t.Fatalf("partition got: %v, expected :%v", AsSlice(got), expected)
+	}
+}
