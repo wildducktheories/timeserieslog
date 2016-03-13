@@ -44,10 +44,19 @@ func (d *disjointRanges) Partition(e Element, o Order) (SortedRange, SortedRange
 	}
 
 	for i, r := range d.segments {
+		if r.First() == nil {
+			panic("r.First() is nil!")
+		}
+		if r.Last() == nil {
+			panic("r.Last() is nil!")
+		}
 		if o(r.First(), e) && o(e, r.Last()) {
 			p1, p2 := r.Partition(e, o)
 			var r1, r2 SortedRange
 			if p1.Limit() == 0 {
+				if p2.First() == nil {
+					panic("p2.First() is nil!")
+				}
 				r1, r2 = &disjointRanges{
 					first:    d.first,
 					last:     d.segments[i-1].Last(),
@@ -59,6 +68,9 @@ func (d *disjointRanges) Partition(e Element, o Order) (SortedRange, SortedRange
 				}
 				return EmptyRange, p2
 			} else if p2.Limit() == 0 {
+				if p1.Last() == nil {
+					panic("p1.Last() is nil!")
+				}
 				r1, r2 = &disjointRanges{
 					first:    d.first,
 					last:     p1.Last(),
@@ -69,6 +81,12 @@ func (d *disjointRanges) Partition(e Element, o Order) (SortedRange, SortedRange
 					segments: d.segments[i+1:],
 				}
 			} else {
+				if p1.Last() == nil {
+					panic("p1.Last() is nil!")
+				}
+				if p2.First() == nil {
+					panic("p2.First() is nil!")
+				}
 				r1, r2 = &disjointRanges{
 					first:    d.first,
 					last:     p1.Last(),
