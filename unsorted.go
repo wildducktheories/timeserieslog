@@ -41,7 +41,7 @@ func (r *unsortedRange) add(e Element) {
 // freeze locks the receiver to prevent further updates
 // and creates an immutableRange from the sorted, deduplicated
 // elements.
-func (r *unsortedRange) freeze() *immutableRange {
+func (r *unsortedRange) freeze() SortedRange {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
