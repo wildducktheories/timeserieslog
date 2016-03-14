@@ -116,12 +116,11 @@ func (p *process) spillAccumulator(final chan<- tsl.SortedRange) {
 func (p *process) snapshot(current *element) {
 
 	write, hold := p.buffer.Freeze().Partition(p.split, tsl.LessOrder)
-	var newer tsl.SortedRange
 
 	if p.prevsplit != nil {
 		// check that we don't have anything that sorts before the previous split.
 		var older tsl.SortedRange
-		older, newer = write.Partition(p.prevsplit, tsl.LessOrder)
+		older, newer := write.Partition(p.prevsplit, tsl.LessOrder)
 		if older.Limit() > 0 {
 			// we can't write this to the sorted channel, because it violate
 			// the invariant about never writing anything into p.sorted that
@@ -129,12 +128,11 @@ func (p *process) snapshot(current *element) {
 			p.window = 2 * p.window
 			p.windowCount = 0
 			p.spills <- older
+			write = newer // only write the newer portion of the write partition
 		}
-	} else {
-		newer = write
 	}
 
-	p.sorted <- tsl.Merge(p.keep, newer)
+	p.sorted <- tsl.Merge(p.keep, write)
 
 	p.buffer, p.keep, p.prevsplit, p.split = tsl.NewUnsortedRange(), hold, p.split, current
 }
