@@ -8,148 +8,86 @@ Timeseries data is data which tends to arrive in an almost, but not completely s
 abstractions which provide efficient means to sort such data in a continuous, streaming manner taking
 advantage of the mostly sorted nature of most timeseries data.
 
-#USAGE
+#EXAMPLE
 
-The following example, found in examples/toy-tsl-sort, shows how to use the API to strictly sort
-almost sorted timeseries data.
+The [example](https://github.com/wildducktheories/timeserieslog/blob/master/examples/toy-tsl-sort/main.go) contains an implementation of a sort utility that makes use of the timeserieslog API to efficiently sort timeseries data.
 
-The basic idea is that data is buffered into a `tsl.UnsortedRange` until a configurable number of
-records have been read (controlled by the `--window` option). That range is then frozen and the
-data is then partitioned into two sorted ranges - the records before a split record (`write`) and the records afterwards (`hold`). The records before the split record are merged with any records kept from a previous iteration (`keep`) and then immediately written to the output. The records after the split record are retained (`keep`) and the split record is updated to the current record. The process continues until all the records have been read.
+toy-tsl-sort reads lines from stdin and writes them into a `tsl.UnsortedRange`. Every so often (based on the number of records configured with the --window parameter), the reading goroutine takes a snapshot of the records read since the last snapshot, and partitions them into two ranges, using a split record to identify the partition boundary. Records _younger_ than the `split` record are put aside in a local variable called `hold`. Records _older_ than the `split` record (but younger than the `prevsplit` record) are merged with records kept around from the last iteration (`keep`). The resulting merged range is written into the `sorted` channel. Any records _older_ than the `prevsplit` record are written into a spill channel.
+After each snapshot is processed `keep`, `prevsplit` and `split` are updated based on the values of `hold`, `split` and the current record.
 
-The process detects if the configured window is too small to successfully sort the data and
-will die with a non-zero exit status if this is the case.
+The `--progressive` option determines whether the sort proceeds optimistically or conservatively. If `--progressive` is true, the sort proceeds with the assumption that the configured window size is sufficient
+to absorb any input records that arrive out of order and so it writes sorted data as soon as it falls out
+of the current window. Conversely, if `--progressive` is false (the default), the sort processes all the input before generating any output.
 
-	package main
+`--progressive=true` favours performance over correctness; `--progressive=false` favours correctness over performance. In particular, if out of order data that exceeds the buffering window arrives, the progressive sort will write such data into a spill buffer which is tacked onto the end of the otherwise sorted stream and write a warning message to stderr and set a non-zero exit code. On the otherhand, the non-progressive sort will retain the data and perform a final merge sort with the bulk of the sorted input and then write the fully (and correctly) sorted result into the output stream.
 
-	import (
-		"bufio"
-		"flag"
-		"fmt"
-		"io"
-		"os"
-		"strings"
-		"sync"
+[timestamp.txt.gz](https://github.com/wildducktheories/timeserieslog/blob/master/examples/toy-tsl-sort/timestamp.txt.gz) contains 4.2M records from a real webserver's access log. Each line consists of timestamp at which a request started. The data was written to the log at the time each request ended. This is example of timeseries data that is almost, but not actually sorted.
 
-		"github.com/wildducktheories/timeserieslog"
-	)
+The following shows the sort performance of toy-tsl-sort compared to the standard OSX sort utility.
 
-	type element struct {
-		line    string
-		ordinal int
-	}
+First, of all, we build the utility:
 
-	func (e *element) Less(o tsl.Element) bool {
-		oe := o.(*element)
-		if e.line == oe.line {
-			return e.ordinal < oe.ordinal
-		} else {
-			return e.line < oe.line
-		}
-	}
+    $ (cd examples/toy-tsl-sort; go build)
 
-	func main() {
-		window := 0
-		flag.IntVar(&window, "window", 4000, "The number of records to buffer prior to writing.")
-		flag.Parse()
+Next, we baseline the performance of the OSX gnu sort utility:
 
-		r := bufio.NewReader(os.Stdin)
-		count := 0
-		buffer := tsl.NewUnsortedRange()
-		var keep tsl.SortedRange = tsl.EmptyRange
-		var split string
-		var prevsplit string
+    $ (cd examples/toy-tsl-sort/;
+       gzip -dc timestamps.txt.gz | \
+       time /usr/bin/sort | \
+       wc)
+    59.15 real        58.67 user         0.30 sys
+     4284042 8568084 102817008
 
-		wg := sync.WaitGroup{}
-		ch := make(chan tsl.SortedRange)
+Next, we run ./toy-tsl-sort without any parameters.
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+    $ (cd examples/toy-tsl-sort/; gzip -dc timestamps.txt.gz | \
+       time ./toy-tsl-sort | \
+       wc)
+    12.60 real        14.59 user         3.79 sys
+    4284042 8568084 102817008
 
-			for r := range ch {
-				c := r.Open()
-				for {
-					e := c.Next()
-					if e == nil {
-						break
-					}
-					os.Stdout.WriteString(e.(*element).line + "\n")
-				}
-			}
-		}()
+This is ~ 5x faster than the OSX sort utility. The apparent reason for the discrepancy is because the OSX sort is writing work files into the /tmp directory.
 
-		for {
-			count++
-			if l, err := r.ReadString('\n'); err != nil {
-				if err == io.EOF {
-					break
-				}
-				fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
-				os.Exit(1)
-			} else {
-				l = strings.TrimSpace(l)
-				if count == 1 {
-					split = l
-				}
-				buffer.Add([]tsl.Element{&element{
-					line:    l,
-					ordinal: count,
-				}})
-				if count%window == 0 {
-					write, hold := buffer.Freeze().Partition(&element{
-						line:    split,
-						ordinal: 0,
-					}, tsl.LessOrder)
+toy-tsl-sort supports a --progressive output option which optimistically assumes that the
+default window size is sufficient to cope with any unsorted data in the input stream.
+If the assumption is too optimistic the sort will fail with a non-zero exit code and
+print a message indicating how many records were written out of order.
 
-					if prevsplit != "" {
+    $ (cd examples/toy-tsl-sort/;
+       gzip -dc timestamps.txt.gz | \
+       time ./toy-tsl-sort --progressive | \
+       tail -20)
+    last 11 records written out of order. increase --window to at least 8192
+            8.41 real        11.56 user         2.64 sys
+    2016-03-12 10:28:51.464
+    2016-03-12 10:28:54.288
+    2016-03-12 10:28:58.480
+    2016-03-12 10:29:01.354
+    2016-03-12 10:29:04.482
+    2016-03-12 10:29:08.477
+    2016-03-12 10:29:11.341
+    2016-03-12 10:29:14.447
+    2016-03-12 10:29:18.480
+    2016-03-06 22:25:53.499
+    2016-03-06 22:25:54.465
+    2016-03-06 22:25:54.499
+    2016-03-06 22:26:41.499
+    2016-03-06 22:26:41.499
+    2016-03-06 22:26:43.499
+    2016-03-06 22:26:44.093
+    2016-03-06 22:27:31.329
+    2016-03-06 22:27:34.499
+    2016-03-06 22:27:34.499
+    2016-03-06 22:27:34.499
 
-						check, _ := write.Partition(&element{
-							line:    prevsplit,
-							ordinal: 0,
-						}, tsl.LessOrder)
+A `--window` option may be used to increase the default window size.
 
-						if check.Limit() > 0 {
+    $ (cd examples/toy-tsl-sort/;
+       gzip -dc timestamps.txt.gz | \
+       time ./toy-tsl-sort --progressive --window=8192 | \
+       wc)
+    7.34 real        12.84 user         3.34 sys
+    4284042 8568084 102817008
 
-							// if check has any records, then it means the window is too small to succesfully sort
-							// the data.
-
-							fmt.Fprintf(os.Stderr, "window too small: %s: %s", tsl.AsSlice(check)[0].(*element).line, prevsplit)
-							os.Exit(1)
-						}
-					}
-					ch <- tsl.Merge(keep, write)
-
-					keep = hold
-					prevsplit = split
-					split = l
-					buffer = tsl.NewUnsortedRange()
-				}
-			}
-		}
-
-		ch <- tsl.Merge(keep, buffer.Freeze())
-		close(ch)
-		wg.Wait()
-	}
-
-examples/toy-tsl-sort/timestamp.txt.gz contains 4.2M records from a real webserver's access log. Each line consists of timestamp at which a request started. The data was written to the log at the time each request ended. This is example of timeseries data that is almost, but not actually sorted.
-
-The following shows the sort performance of toy-tsl-sort compared to the standard OSX sort utility. Note that
-toy-tsl-sort will fail if --window is too small - in this case 2000.
-
-	$ (cd examples/toy-tsl-sort; go build)
-	$ (cd examples/toy-tsl-sort/; gzip -dc timestamps.txt.gz | time ./toy-tsl-sort --window=4000 | wc)
-	        7.35 real        10.06 user         3.43 sys
-	 4284042 8568084 102817008
-
-	$ (cd examples/toy-tsl-sort/; gzip -dc timestamps.txt.gz | time sort | wc)
-	       59.15 real        58.67 user         0.30 sys
-	 4284042 8568084 102817008
-
-	$ (cd examples/toy-tsl-sort/; gzip -dc timestamps.txt.gz | time ./toy-tsl-sort --window=2000 | wc)
-	window too small: 2016-03-06 22:25:53.499: 2016-03-06 22:32:47.465
-	        2.83 real         3.66 user         1.33 sys
-	 1689818 3379636 40555632
-
-
+Notice that the elapsed time of the progressive sort is about 5 seconds faster than the non-progressive sort. The reason is that the optimitistic progressive sort can write output as it goes whereas the conservative non-progressive sort must sort all the data before writing any of it and so there is no possibilty to
+take advantage of available concurrency between the CPU and IO paths.
