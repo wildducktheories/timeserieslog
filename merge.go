@@ -153,7 +153,11 @@ func (c *disjointCursor) Fill(buffer []Element) int {
 //
 // If both a.First() and b.First() satisfy these constraints, then choose b.First()
 func selectFirst(a, b Range) Element {
-	if a.First().Less(b.First()) {
+	if a.First() == nil {
+		return b.First()
+	} else if b.First() == nil {
+		return a.First()
+	} else if a.First().Less(b.First()) {
 		return a.First()
 	}
 	return b.First()
@@ -164,7 +168,11 @@ func selectFirst(a, b Range) Element {
 //
 // If both a.Last() and b.Last() satisfy those constraints, then choose b.Last()
 func selectLast(a, b Range) Element {
-	if !b.Last().Less(a.Last()) {
+	if a.Last() == nil {
+		return b.Last()
+	} else if b.Last() == nil {
+		return a.Last()
+	} else if !b.Last().Less(a.Last()) {
 		return b.Last()
 	}
 	return a.Last()

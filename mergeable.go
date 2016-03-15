@@ -185,32 +185,6 @@ func (r *mergeableRange) Partition(e Element, o Order) (SortedRange, SortedRange
 	p1, p2 := r.left.Partition(e, o)
 	p3, p4 := r.right.Partition(e, o)
 
-	selectFirst := func(p, q SortedRange) Element {
-		if p.Limit() == 0 {
-			return q.First()
-		} else if q.Limit() == 0 {
-			return p.First()
-		}
-		if o(p.First(), q.First()) {
-			return p.First()
-		} else {
-			return q.First()
-		}
-	}
-
-	selectLast := func(p, q SortedRange) Element {
-		if p.Limit() == 0 {
-			return q.Last()
-		} else if q.Limit() == 0 {
-			return p.Last()
-		}
-		if o(q.Last(), p.Last()) {
-			return p.Last()
-		} else {
-			return q.Last()
-		}
-	}
-
 	return useEmptyRangeIfEmpty(newMergeableRange(selectFirst(p1, p3), selectLast(p1, p3), p1, p3, nil)),
 		useEmptyRangeIfEmpty(newMergeableRange(selectFirst(p2, p4), selectLast(p2, p4), p2, p4, nil))
 }
