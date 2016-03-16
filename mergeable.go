@@ -136,8 +136,7 @@ func (r *mergeableRange) Open() Cursor {
 	defer r.mu.Unlock()
 
 	if r.left != nil && r.right == nil {
-		r.right = r.unsorted.freeze()
-		r.rx = &mergeCursor{underlying: r.right.Open()}
+		r.freeze()
 	}
 
 	if r.left == nil {
@@ -166,13 +165,20 @@ func useEmptyRangeIfEmpty(s SortedRange) SortedRange {
 	}
 }
 
+// freezes the unsorted range and initializes the rx cursor.
+// Must be called while holding the range's write lock.
+func (r *mergeableRange) freeze() {
+	r.right = r.unsorted.freeze()
+	r.rx = &mergeCursor{underlying: r.right.Open()}
+}
+
 // Partition partitions the immutableRange if the merge is already done or
 // the underlying ranges otherwise. This operation can be O(n.log(n)) in the
 // size of the unsorted range, if there is one but is O(log(n)) otherwise.
 func (r *mergeableRange) Partition(e Element, o Order) (SortedRange, SortedRange) {
 	r.mu.Lock()
 	if r.left != nil && r.right == nil {
-		r.right = r.unsorted.freeze()
+		r.freeze()
 	}
 	if r.left == nil {
 		return r.immutableRange.Partition(e, o)
