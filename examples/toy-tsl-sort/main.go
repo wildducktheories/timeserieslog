@@ -109,10 +109,8 @@ func (p *process) spillAccumulator(final chan<- tsl.SortedRange) {
 //
 // Note that most of the expensive work associated with processing the
 // ranges produced by this method is done in the goroutines that
-// service the channels. On the Partition operations may involve an
-// O(n.log(n)) sort of the unsorted arm of the frozen partition but
-// given the assumption that the stream is mostly sorted, this should
-// be relatively rare.
+// service the channels. The Partition operations may involve an
+// O(n.log(n)) sort of the unsorted arm of the frozen partition.
 func (p *process) snapshot(current *element) {
 
 	write, hold := p.buffer.Freeze().Partition(p.split, tsl.LessOrder)
