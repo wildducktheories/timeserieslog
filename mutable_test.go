@@ -264,3 +264,16 @@ func Test_MutableRange_1_0_3_2_Partition_2_Less(t *testing.T) {
 		t.Fatalf("got: %v. %v", got, err)
 	}
 }
+
+func Test_MutableRange_PartitionThenOpen(t *testing.T) {
+	d := NewElements([]int{0, 1, 2, 4, 3})
+	r := &mutableRange{}
+	r.Add(d)
+	frozen := r.Freeze()
+	frozen.Partition(intElement{2}, LessOrder)
+	got := Elements(AsSlice(frozen))
+	expected := NewElements([]int{0, 1, 2, 3, 4})
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("partition failed got: %+v, expected: %+v", got, expected)
+	}
+}
