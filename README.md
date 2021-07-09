@@ -1,14 +1,14 @@
-#NAME
+# NAME
 timeserieslog - a go API optimized for processing timeseries data
 
-#DESCRIPTION
+# DESCRIPTION
 timeserieslog is a go API that is optimized for processing timeseries data.
 
 Timeseries data is data which tends to arrive in an almost, but not completely sorted order. For some applications, it is important to be able to access the data in a strictly sorted order. This API provides
 abstractions which provide efficient means to sort such data in a continuous, streaming manner taking
 advantage of the mostly sorted nature of most timeseries data.
 
-#EXAMPLE
+# EXAMPLE
 
 The [example](https://github.com/wildducktheories/timeserieslog/blob/master/examples/toy-tsl-sort/main.go) contains an implementation of a sort utility that makes use of the timeserieslog API to efficiently sort timeseries data.
 
